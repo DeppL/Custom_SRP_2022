@@ -40,9 +40,9 @@
 			HLSLPROGRAM
 			#pragma target 3.5
 			#pragma shader_feature _VERTEX_COLORS
-			#pragma shader_feature _FLIPINGBOOK_BLENDING
-			#pragma shader_feature _NEAR_FADE
+			#pragma shader_feature _FLIPBOOK_BLENDING
 			#pragma shader_feature _CLIPPING
+			#pragma shader_feature _NEAR_FADE
 			#pragma shader_feature _SOFT_PARTICLES
 			#pragma shader_feature _DISTORTION
 			#pragma multi_compile_instancing
@@ -62,7 +62,7 @@
 			HLSLPROGRAM
 			#pragma target 3.5
 			#pragma shader_feature _VERTEX_COLORS
-			#pragma shader_feature _FLIPINGBOOK_BLENDING
+			#pragma shader_feature _FLIPBOOK_BLENDING
 			#pragma shader_feature _ _SHADOWS_CLIP _SHADOWS_DITHER
 			#pragma multi_compile_instancing
 			#pragma vertex ShadowCasterPassVertex

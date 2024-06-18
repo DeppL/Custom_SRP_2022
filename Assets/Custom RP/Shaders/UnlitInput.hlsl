@@ -25,7 +25,7 @@ struct InputConfig {
     float4 color;
     float2 baseUV;
     float3 flipbookUVB;
-    float flipbookBlending;
+    bool flipbookBlending;
     bool nearFade;
     bool softParticles;
 };

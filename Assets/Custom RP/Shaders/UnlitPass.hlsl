@@ -4,9 +4,9 @@
 struct Attributes {
 	float3 positionOS : POSITION;
 	float4 color : COLOR;
-#if defined(_FLIPINGBOOK_BLENDING)
+#if defined(_FLIPBOOK_BLENDING)
 	float4 baseUV :TEXCOORD0;
-	float flipbookBlend : TEXCOORD1
+	float flipbookBlend : TEXCOORD1;
 #else
 	float2 baseUV : TEXCOORD0;
 #endif
@@ -19,7 +19,7 @@ struct Varyings {
 	float4 color : VAR_COLOR;
 #endif
 	float2 baseUV : VAR_BASE_UV;
-#if defined(_FLIPINGBOOK_BLENDING)
+#if defined(_FLIPBOOK_BLENDING)
 	float3 flipbookUVB : VAR_FLIPBOOK;
 #endif
 	UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -36,7 +36,7 @@ Varyings UnlitPassVertex (Attributes input) {
 	output.color = input.color;
 #endif
 	output.baseUV.xy = TransformBaseUV(input.baseUV.xy);
-#if defined(_FLIPINGBOOK_BLENDING)
+#if defined(_FLIPBOOK_BLENDING)
 	output.flipbookUVB.xy = TransformBaseUV(input.baseUV.zw);
 	output.flipbookUVB.z = input.flipbookBlend;
 #endif
@@ -51,7 +51,7 @@ float4 UnlitPassFragment (Varyings input) : SV_TARGET {
 #endif
 #if defined(_FLIPBOOK_BLENDING)
 	config.flipbookUVB = input.flipbookUVB;
-	config.flipbookBlend = true;
+	config.flipbookBlending = true;
 #endif
 #if defined(_NEAR_FADE)
 	config.nearFade = true;
