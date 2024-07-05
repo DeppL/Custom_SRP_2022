@@ -5,14 +5,7 @@ using UnityEngine.Rendering;
 
 partial class CameraRenderer {
 
-	partial void DrawGizmosBeforeFX();
-	partial void DrawGizmosAfterFX();
-
-	partial void DrawUnsupportedShaders ();
-
 	partial void PrepareForSceneWindow ();
-
-	partial void PrepareBuffer ();
 
 #if UNITY_EDITOR
 
@@ -27,34 +20,7 @@ partial class CameraRenderer {
 
 	static Material errorMaterial;
 
-	string SampleName { get; set; }
-
-	partial void DrawGizmosBeforeFX() {
-		if (Handles.ShouldRenderGizmos()) {
-			if (useIntermediateBuffer)
-			{
-				Draw(depthAttachmentId, BuiltinRenderTextureType.CameraTarget, true);
-				ExecuteBuffer();
-			}
-			context.DrawGizmos(camera, GizmoSubset.PreImageEffects);
-		}
-	}
-    partial void DrawGizmosAfterFX()
-    {
-		if (Handles.ShouldRenderGizmos())
-		{
-			if (postFXStack.IsActive)
-			{
-				Draw(depthAttachmentId, BuiltinRenderTextureType.CameraTarget, true);
-				ExecuteBuffer();
-			}
-			context.DrawGizmos(camera, GizmoSubset.PostImageEffects);
-		}
-    }
-
-    
-
-	partial void DrawUnsupportedShaders () {
+	public void DrawUnsupportedShaders () {
 		if (errorMaterial == null) {
 			errorMaterial =
 				new Material(Shader.Find("Hidden/InternalErrorShader"));
@@ -79,16 +45,5 @@ partial class CameraRenderer {
 			useScaledRendering = false;
 		}
 	}
-
-	partial void PrepareBuffer () {
-		Profiler.BeginSample("Editor Only");
-		buffer.name = SampleName = camera.name;
-		Profiler.EndSample();
-	}
-
-#else
-
-	const string SampleName = bufferName;
-
 #endif
 }

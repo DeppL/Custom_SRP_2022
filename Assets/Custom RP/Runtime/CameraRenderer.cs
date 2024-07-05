@@ -1,28 +1,26 @@
 ﻿using UnityEngine;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
 public partial class CameraRenderer {
 
 	public const float renderScaleMin = 0.1f, renderScaleMax = 2f;
-	const string bufferName = "Render Camera";
 
 	static ShaderTagId
 		unlitShaderTagId = new ShaderTagId ("SRPDefaultUnlit"),
 		litShaderTagId = new ShaderTagId ("CustomLit");
 
-	CommandBuffer buffer = new CommandBuffer {
-		name = bufferName
-	};
+	private CommandBuffer buffer;
 
 	ScriptableRenderContext context;
 
-	Camera camera;
+	public Camera camera;
 
 	CullingResults cullingResults;
 
 	Lighting lighting = new Lighting ();
 	PostFXStack postFXStack = new PostFXStack();
-	static int 
+	public static int 
 		bufferSizeId = Shader.PropertyToID("_CameraBufferSize"),
 		colorAttachmentId = Shader.PropertyToID("_CameraColorAttachment"),
 		depthAttachmentId = Shader.PropertyToID("_CameraDepthAttachment"),
@@ -34,7 +32,7 @@ public partial class CameraRenderer {
 	bool useHDR, useScaledRendering;
 	static CameraSettings defaultCameraSettings = new CameraSettings();
 
-	bool useColorTexture, useDepthTexture, useIntermediateBuffer;
+	public bool useColorTexture, useDepthTexture, useIntermediateBuffer;
 	Vector2Int bufferSize;
 
 	Material material;
@@ -58,6 +56,7 @@ public partial class CameraRenderer {
 		CoreUtils.Destroy(material);
 	}
 	public void Render(
+		RenderGraph renderGraph,
 		ScriptableRenderContext context, Camera camera, CameraBufferSettings bufferSettings,
 		bool useDynamicBatching, bool useGPUInstancing, bool useLightsPerObject,
 		ShadowSettings shadowSettings, PostFXSettings postFXSettings,
@@ -65,10 +64,19 @@ public partial class CameraRenderer {
 	) {
 		this.context = context;
 		this.camera = camera;
-
-		var crpCamera = camera.GetComponent<CustomRenderPipelineCamera>();
-		CameraSettings cameraSettings =
-			crpCamera ? crpCamera.Settings : defaultCameraSettings;
+	
+		ProfilingSampler cameraSampler;
+		CameraSettings cameraSettings;
+		if (camera.TryGetComponent(out CustomRenderPipelineCamera crpCamera))
+		{
+			cameraSampler = crpCamera.Sampler;
+			cameraSettings = crpCamera.Settings;
+		}
+		else
+		{
+			cameraSampler = ProfilingSampler.Get(camera.cameraType);
+			cameraSettings = defaultCameraSettings;
+		}
 		// useDepthTexture = true;
 		if (camera.cameraType == CameraType.Reflection)
 		{
@@ -87,7 +95,6 @@ public partial class CameraRenderer {
 		}
 		float renderScale = cameraSettings.GetRenderScale(bufferSettings.renderScale);
 		useScaledRendering = renderScale < 0.99f || renderScale > 1.01f;
-		PrepareBuffer();
 		PrepareForSceneWindow();
 		if (!Cull(shadowSettings.maxDistance)) {
 			return;
@@ -105,43 +112,49 @@ public partial class CameraRenderer {
 			bufferSize.y = camera.pixelHeight;
 		}
 
-
-		buffer.BeginSample (SampleName);
-		buffer.SetGlobalVector(bufferSizeId, new Vector4(
-			1f / bufferSize.x, 1f / bufferSize.y,
-			bufferSize.x, bufferSize.y
-		));
-		ExecuteBuffer();
-		lighting.Setup(
-			context, cullingResults, shadowSettings, useLightsPerObject,
-			cameraSettings.maskLights ? cameraSettings.renderingLayerMask : -1
-		);
 		bufferSettings.fxaa.enabled &= cameraSettings.allowFXAA;
 		postFXStack.Setup(
-			context, camera, bufferSize, postFXSettings, cameraSettings.keepAlpha, useHDR, colorLUTResolution,
+			camera, bufferSize, postFXSettings, cameraSettings.keepAlpha, useHDR, colorLUTResolution,
 			cameraSettings.finalBlendMode, bufferSettings.bicubicRescaling,
 			bufferSettings.fxaa);
-		buffer.EndSample(SampleName);
-		Setup();
-		DrawVisibleGeometry(
-			useDynamicBatching, useGPUInstancing, useLightsPerObject,
-			cameraSettings.renderingLayerMask
-		);
-		DrawUnsupportedShaders();
-		DrawGizmosBeforeFX();
-		if (postFXStack.IsActive)
+
+		useIntermediateBuffer = useScaledRendering ||
+		                        useColorTexture || useDepthTexture || postFXStack.IsActive;
+		var renderGraphParameters = new RenderGraphParameters()
 		{
-			postFXStack.Render(colorAttachmentId);
-		}
-		else if (useIntermediateBuffer)
+			commandBuffer = CommandBufferPool.Get(),
+			currentFrameIndex = Time.frameCount,
+			executionName = cameraSampler.name,
+			scriptableRenderContext = context
+		};
+		buffer = renderGraphParameters.commandBuffer;
+		using (renderGraph.RecordAndExecute(renderGraphParameters))
 		{
-			// Draw(colorAttachmentId, BuiltinRenderTextureType.CameraTarget);
-			DrawFinal(cameraSettings.finalBlendMode);
-			ExecuteBuffer();
+			using var _ = new RenderGraphProfilingScope(renderGraph, cameraSampler);
+			LightingPass.Record(
+				renderGraph, lighting,
+				cullingResults, shadowSettings, useLightsPerObject,
+				cameraSettings.maskLights ? cameraSettings.renderingLayerMask : -1);
+			SetupPass.Record(renderGraph, this);
+			VisibleGeometryPass.Record(
+				renderGraph, this,
+				useDynamicBatching, useGPUInstancing, useLightsPerObject,
+				cameraSettings.renderingLayerMask
+			);
+			UnsupportedShadersPass.Record(renderGraph, this);
+			if (postFXStack.IsActive)
+			{
+				PostFXPass.Record(renderGraph, postFXStack);
+			}
+			else if (useIntermediateBuffer)
+			{
+				FinalPass.Record(renderGraph, this, cameraSettings.finalBlendMode);
+			}
+			GizmosPass.Record(renderGraph, this);
 		}
-		DrawGizmosAfterFX();
 		Cleanup();
 		Submit();
+		CommandBufferPool.Release(renderGraphParameters.commandBuffer);
 	}
 
 	bool Cull (float maxShadowDistance) {
@@ -153,12 +166,10 @@ public partial class CameraRenderer {
 		return false;
 	}
 
-	void Setup () {
+	 public void Setup () {
 		context.SetupCameraProperties (camera);
 		CameraClearFlags flags = camera.clearFlags;
 
-		useIntermediateBuffer = useScaledRendering ||
-			useColorTexture || useDepthTexture || postFXStack.IsActive;
 		if (useIntermediateBuffer)
 		{
 			if (flags > CameraClearFlags.Color)
@@ -187,27 +198,28 @@ public partial class CameraRenderer {
 			flags == CameraClearFlags.Color ?
 			camera.backgroundColor.linear : Color.clear
 		);
-		buffer.BeginSample (SampleName);
 		buffer.SetGlobalTexture(colorTextureId, missingTexture);
 		buffer.SetGlobalTexture(depthTextureId, missingTexture);
+		buffer.SetGlobalVector(bufferSizeId, new Vector4(
+			1f / bufferSize.x, 1f / bufferSize.y, bufferSize.x, bufferSize.y));
 		ExecuteBuffer ();
 	}
 
 	void Submit () {
-		buffer.EndSample(SampleName);
 		ExecuteBuffer();
 		context.Submit();
 	}
 
-	void ExecuteBuffer () {
+	public void ExecuteBuffer () {
 		context.ExecuteCommandBuffer(buffer);
 		buffer.Clear();
 	}
 
-	void DrawVisibleGeometry(
+	public void DrawVisibleGeometry(
 		bool useDynamicBatching, bool useGPUInstancing, bool useLightsPerObject,
 		int renderingLayerMask
 	) {
+		ExecuteBuffer();
 		PerObjectData lightsPerObjectFlags = useLightsPerObject ?
 			PerObjectData.LightData | PerObjectData.LightIndices :
 			PerObjectData.None;
@@ -315,7 +327,7 @@ public partial class CameraRenderer {
 		}
 	}
 
-	void Draw(
+	public void Draw(
 		RenderTargetIdentifier from, RenderTargetIdentifier to, bool isDepth = false
 	) 
 	{
@@ -329,7 +341,7 @@ public partial class CameraRenderer {
 	}
 
 	private static Rect fullViewRect = new Rect(0f, 0f, 1f, 1f);
-    void DrawFinal(CameraSettings.FinalBlendMode finalBlendMode)
+    public void DrawFinal(CameraSettings.FinalBlendMode finalBlendMode)
     {
         buffer.SetGlobalFloat(srcBlendId, (float)finalBlendMode.source);
         buffer.SetGlobalFloat(dstBlendId, (float)finalBlendMode.destination);

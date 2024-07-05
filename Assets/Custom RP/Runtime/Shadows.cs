@@ -1,9 +1,8 @@
 ﻿using UnityEngine;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 
 public class Shadows {
-
-	const string bufferName = "Shadows";
 
 	const int maxShadowedDirLightCount = 4, maxShadowedOtherlightCount = 16;
 	const int maxCascades = 4;
@@ -73,9 +72,7 @@ public class Shadows {
 
 	int shadowedDirLightCount, shadowedOtherLightCount;
 
-	CommandBuffer buffer = new CommandBuffer {
-		name = bufferName
-	};
+	private CommandBuffer buffer;
 
 	ScriptableRenderContext context;
 
@@ -85,10 +82,12 @@ public class Shadows {
 	Vector4 atlasSizes;
 
 	public void Setup (
-		ScriptableRenderContext context, CullingResults cullingResults,
+		RenderGraphContext context, CullingResults cullingResults,
 		ShadowSettings settings
-	) {
-		this.context = context;
+	)
+	{
+		buffer = context.cmd;
+		this.context = context.renderContext;
 		this.cullingResults = cullingResults;
 		this.settings = settings;
 		shadowedDirLightCount = 0;
@@ -188,7 +187,6 @@ public class Shadows {
 		if (shadowedOtherLightCount > 0) {
 			RenderOtherShadows();
 		}
-		buffer.BeginSample(bufferName);
 		SetKeywords(shadowMaskKeywords, 
 			useShadowMask ? (QualitySettings.shadowmaskMode == ShadowmaskMode.Shadowmask ? 0 : 1) : -1);
 		buffer.SetGlobalInt(
@@ -203,7 +201,6 @@ public class Shadows {
 			)
 		);
 		buffer.SetGlobalVector(shadowAtlastSizeId, atlasSizes);
-		buffer.EndSample(bufferName);
 		ExecuteBuffer();
 	}
 
@@ -222,7 +219,7 @@ public class Shadows {
 		);
 		buffer.ClearRenderTarget(true, false, Color.clear);
 		buffer.SetGlobalFloat(shadowPancakingId, 1f);
-		buffer.BeginSample(bufferName);
+		buffer.BeginSample("Directional Shadows");
 		ExecuteBuffer();
 
 		int tiles = shadowedDirLightCount * settings.directional.cascadeCount;
@@ -248,7 +245,7 @@ public class Shadows {
 		// buffer.SetGlobalVector(
 		// 	shadowAtlastSizeId, new Vector4(atlasSize, 1f / atlasSize)
 		// );
-		buffer.EndSample(bufferName);
+		buffer.EndSample("Directional Shadows");
 		ExecuteBuffer();
 	}
 	void RenderDirectionalShadows (int index, int split, int tileSize) {
@@ -304,7 +301,7 @@ public class Shadows {
 		);
 		buffer.ClearRenderTarget(true, false, Color.clear);
 		buffer.SetGlobalFloat(shadowPancakingId, 0f);
-		buffer.BeginSample(bufferName);
+		buffer.BeginSample("Other Shadows");
 		ExecuteBuffer();
 
 		int tiles = shadowedOtherLightCount;
@@ -328,7 +325,7 @@ public class Shadows {
 		SetKeywords(
 			otherFilterKeywords, (int)settings.other.filter - 1
 		);
-		buffer.EndSample(bufferName);
+		buffer.EndSample("Other Shadows");
 		ExecuteBuffer();
 	}
 

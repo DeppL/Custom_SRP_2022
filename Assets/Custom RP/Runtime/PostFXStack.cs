@@ -1,18 +1,18 @@
 ﻿using UnityEngine;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 using static PostFXSettings;
 
 public partial class PostFXStack 
 {
-    const string bufferName = "POST FX";
     const int maxBloomPyramidLevels = 16;
 
     const string
         fxaaQualityLowKeyword = "FXAA_QUALITY_LOW",
         fxaaQualityMediumKeyword = "FXAA_QUALITY_MEDIUM";
-    CommandBuffer buffer = new CommandBuffer {
-        name = bufferName
-    };
+
+    private CommandBuffer buffer;
+   
     enum Pass
     {
         BloomAdd, BloomHorizontal, 
@@ -57,7 +57,6 @@ public partial class PostFXStack
     
     public bool IsActive => settings != null;
     bool keepAlpha, useHDR;
-    ScriptableRenderContext context;
     Camera camera;
     PostFXSettings settings;
     int colorLUTResolution;
@@ -75,14 +74,13 @@ public partial class PostFXStack
         }
     }
     public void Setup(
-        ScriptableRenderContext context, Camera camera, Vector2Int bufferSize,
+        Camera camera, Vector2Int bufferSize,
         PostFXSettings settings, bool keepAlpha, bool useHDR, int colorLUTResolution,
         CameraSettings.FinalBlendMode finalBlendMode, CameraBufferSettings.BicubicRescalingMode bicubicRescaling,
         CameraBufferSettings.FXAA fxaa
     ) {
         this.keepAlpha = keepAlpha;
         this.useHDR = useHDR;
-        this.context = context;
         this.camera = camera;
         this.bufferSize = bufferSize;
         this.settings = 
@@ -93,8 +91,9 @@ public partial class PostFXStack
         this.fxaa = fxaa;
         ApplySceneViewState();
     }
-    public void Render(int sourceId)
+    public void Render(RenderGraphContext context, int sourceId)
     {
+        buffer = context.cmd;
         if (DoBloom(sourceId))
         {
             DoFinal(bloomResultId);
@@ -104,7 +103,7 @@ public partial class PostFXStack
         {
             DoFinal(sourceId);
         }
-        context.ExecuteCommandBuffer(buffer);
+        context.renderContext.ExecuteCommandBuffer(buffer);
         buffer.Clear();
     }
 
