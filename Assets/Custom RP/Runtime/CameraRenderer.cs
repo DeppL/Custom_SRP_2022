@@ -58,7 +58,7 @@ public partial class CameraRenderer {
 	public void Render(
 		RenderGraph renderGraph,
 		ScriptableRenderContext context, Camera camera, CameraBufferSettings bufferSettings,
-		bool useDynamicBatching, bool useGPUInstancing, bool useLightsPerObject,
+		bool useLightsPerObject,
 		ShadowSettings shadowSettings, PostFXSettings postFXSettings,
 		int colorLUTResolution
 	) {
@@ -125,6 +125,7 @@ public partial class CameraRenderer {
 			commandBuffer = CommandBufferPool.Get(),
 			currentFrameIndex = Time.frameCount,
 			executionName = cameraSampler.name,
+			rendererListCulling = true,
 			scriptableRenderContext = context
 		};
 		buffer = renderGraphParameters.commandBuffer;
@@ -136,12 +137,19 @@ public partial class CameraRenderer {
 				cullingResults, shadowSettings, useLightsPerObject,
 				cameraSettings.maskLights ? cameraSettings.renderingLayerMask : -1);
 			SetupPass.Record(renderGraph, this);
-			VisibleGeometryPass.Record(
-				renderGraph, this,
-				useDynamicBatching, useGPUInstancing, useLightsPerObject,
-				cameraSettings.renderingLayerMask
-			);
-			UnsupportedShadersPass.Record(renderGraph, this);
+			GeometryPass.Record(
+				renderGraph, camera, cullingResults,
+				useLightsPerObject, cameraSettings.renderingLayerMask, true);
+			SkyboxPass.Record(renderGraph, camera);
+			if (useColorTexture || useDepthTexture)
+			{
+				CopyAttachmentsPass.Record(renderGraph, this);
+			}
+			GeometryPass.Record(
+				renderGraph, camera, cullingResults,
+				useLightsPerObject, cameraSettings.renderingLayerMask, false);
+			
+			UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
 			if (postFXStack.IsActive)
 			{
 				PostFXPass.Record(renderGraph, postFXStack);
@@ -215,55 +223,6 @@ public partial class CameraRenderer {
 		buffer.Clear();
 	}
 
-	public void DrawVisibleGeometry(
-		bool useDynamicBatching, bool useGPUInstancing, bool useLightsPerObject,
-		int renderingLayerMask
-	) {
-		ExecuteBuffer();
-		PerObjectData lightsPerObjectFlags = useLightsPerObject ?
-			PerObjectData.LightData | PerObjectData.LightIndices :
-			PerObjectData.None;
-		var sortingSettings = new SortingSettings(camera) {
-			criteria = SortingCriteria.CommonOpaque
-		};
-		var drawingSettings = new DrawingSettings(
-			unlitShaderTagId, sortingSettings
-		) {
-			enableDynamicBatching = useDynamicBatching,
-			enableInstancing = useGPUInstancing,
-			perObjectData = 
-				PerObjectData.ReflectionProbes |
-				PerObjectData.Lightmaps |
-				PerObjectData.ShadowMask |
-				PerObjectData.LightProbe |
-				PerObjectData.LightProbeProxyVolume |
-				PerObjectData.OcclusionProbe |
-				PerObjectData.OcclusionProbeProxyVolume |
-				lightsPerObjectFlags
-		};
-		drawingSettings.SetShaderPassName(1, litShaderTagId);
-
-		var filteringSettings = new FilteringSettings (
-			RenderQueueRange.opaque, renderingLayerMask: (uint)renderingLayerMask);
-
-		context.DrawRenderers(
-			cullingResults, ref drawingSettings, ref filteringSettings
-		);
-
-		context.DrawSkybox(camera);
-		if (useColorTexture || useDepthTexture)
-		{
-			CopyAttachments();
-		}
-
-		sortingSettings.criteria = SortingCriteria.CommonTransparent;
-		drawingSettings.sortingSettings = sortingSettings;
-		filteringSettings.renderQueueRange = RenderQueueRange.transparent;
-
-		context.DrawRenderers(
-			cullingResults, ref drawingSettings, ref filteringSettings
-		);
-	}
 	void Cleanup()
 	{
 		lighting.Cleanup();
@@ -282,8 +241,9 @@ public partial class CameraRenderer {
 		}
 	}
 
-	void CopyAttachments ()
+	public void CopyAttachments ()
 	{
+		ExecuteBuffer();
 		if (useColorTexture)
 		{
 			buffer.GetTemporaryRT(

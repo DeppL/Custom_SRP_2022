@@ -6,8 +6,6 @@ public partial class CustomRenderPipelineAsset : RenderPipelineAsset {
 
 	[SerializeField]
 	bool 
-		useDynamicBatching = true, 
-		useGPUInstancing = true, 
 		useSRPBatcher = true,
 		useLightsPerObject = true;
 
@@ -26,6 +24,12 @@ public partial class CustomRenderPipelineAsset : RenderPipelineAsset {
 	[SerializeField]
 	Shader cameraRendererShader = default;
 
+	[Header("Deprecated Settings")] 
+	[SerializeField, Tooltip("Dynamic batching is no longer used")]
+	private bool useDynamicBatching;
+	[SerializeField, Tooltip("GPU instancing is always enabled.")]
+	private bool useGPUInstancing;
+
 	[SerializeField]
 	CameraBufferSettings cameraBuffer = new CameraBufferSettings {
 		allowHDR = true,
@@ -41,7 +45,7 @@ public partial class CustomRenderPipelineAsset : RenderPipelineAsset {
 	protected override RenderPipeline CreatePipeline () {
 		return new CustomRenderPipeline(
 			cameraBuffer,
-			useDynamicBatching, useGPUInstancing, useSRPBatcher, 
+			useSRPBatcher, 
 			useLightsPerObject, shadows, postFXSettings, (int)colorLUTResolution,
 			cameraRendererShader
 		);
