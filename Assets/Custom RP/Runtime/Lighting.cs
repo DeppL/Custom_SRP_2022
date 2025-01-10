@@ -5,29 +5,29 @@ using UnityEngine.Rendering;
 
 public class Lighting {
 	const int maxDirLightCount = 4, maxOtherLightCount = 64;
-	static string lightsPerObjectKeyword = "_LIGHTS_PER_OBJECT";
+	static readonly string lightsPerObjectKeyword = "_LIGHTS_PER_OBJECT";
 
-	static int
+	static readonly int
 		dirLightCountId = Shader.PropertyToID("_DirectionalLightCount"),
 		dirLightColorsId = Shader.PropertyToID("_DirectionalLightColors"),
-		dirLightDirectionsId = Shader.PropertyToID("_DirectionalLightDirectionsAndMasks"),
+		dirLightDirectionsAndMasksId = Shader.PropertyToID("_DirectionalLightDirectionsAndMasks"),
 		dirLightShadowDataId =
 			Shader.PropertyToID("_DirectionalLightShadowData");
 
-	static Vector4[]
+	static readonly Vector4[]
 		dirLightColors = new Vector4[maxDirLightCount],
 		dirLightDirectionsAndMasks = new Vector4[maxDirLightCount],
 		dirLightShadowData = new Vector4[maxDirLightCount];
 
-	static int 
+	static readonly int 
 		otherLightCountId = Shader.PropertyToID("_OtherLightCount"),
 		otherLightColorsId = Shader.PropertyToID("_OtherLightColors"),
 		otherLightPositionsId = Shader.PropertyToID("_OtherLightPositions"),
-		otherLightDirectionId = Shader.PropertyToID("_OtherLightDirectionsAndMasks"),
+		otherLightDirectionAndMasksId = Shader.PropertyToID("_OtherLightDirectionsAndMasks"),
 		otherLightSpotAnglesId = Shader.PropertyToID("_OtherLightSpotAngles"),
 		otherLightShadowDataId = Shader.PropertyToID("_OtherLightShadowData");
 
-	static Vector4[]
+	static readonly Vector4[]
 		otherLightColors = new Vector4[maxOtherLightCount],
 		otherLightPositions = new Vector4[maxOtherLightCount],
 		otherLightDirectionsAndMask = new Vector4[maxOtherLightCount],
@@ -37,7 +37,7 @@ public class Lighting {
 	private CommandBuffer buffer;
 	CullingResults cullingResults;
 
-	Shadows shadows = new Shadows();
+	readonly Shadows shadows = new ();
 
 	public void Setup (
 		RenderGraphContext context, CullingResults cullingResults,
@@ -111,7 +111,7 @@ public class Lighting {
 		buffer.SetGlobalInt(dirLightCountId, dirLightCount);
 		if (dirLightCount > 0) {
 			buffer.SetGlobalVectorArray(dirLightColorsId, dirLightColors);
-			buffer.SetGlobalVectorArray(dirLightDirectionsId, dirLightDirectionsAndMasks);
+			buffer.SetGlobalVectorArray(dirLightDirectionsAndMasksId, dirLightDirectionsAndMasks);
 			buffer.SetGlobalVectorArray(dirLightShadowDataId, dirLightShadowData);
 		}
 
@@ -119,7 +119,7 @@ public class Lighting {
 		if (otherLightCount > 0) {
 			buffer.SetGlobalVectorArray(otherLightColorsId, otherLightColors);
 			buffer.SetGlobalVectorArray(otherLightPositionsId, otherLightPositions);
-			buffer.SetGlobalVectorArray(otherLightDirectionId, otherLightDirectionsAndMask);
+			buffer.SetGlobalVectorArray(otherLightDirectionAndMasksId, otherLightDirectionsAndMask);
 			buffer.SetGlobalVectorArray(otherLightSpotAnglesId, otherLightSpotAngles);
 			buffer.SetGlobalVectorArray(otherLightShadowDataId, otherLightShadowData);
 		}

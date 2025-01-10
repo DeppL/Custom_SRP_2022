@@ -7,6 +7,7 @@ using UnityEngine.Rendering;
 
 public class LightingPass
 {
+    private static readonly ProfilingSampler sampler = new("Lighting");
     private Lighting _lighting;
     private CullingResults _cullingResults;
     private ShadowSettings _shadowSettings;
@@ -23,7 +24,7 @@ public class LightingPass
         bool useLightsPerObject, int renderingLayerMask)
     {
         using RenderGraphBuilder builder =
-            renderGraph.AddRenderPass("Lighting", out LightingPass pass);
+            renderGraph.AddRenderPass(sampler.name, out LightingPass pass, sampler);
         pass._lighting = lighting;
         pass._cullingResults = cullingResults;
         pass._shadowSettings = shadowSettings;

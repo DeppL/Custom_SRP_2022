@@ -32,19 +32,18 @@ public class ShadowSettings {
 		public float cascadeRatio1, cascadeRatio2, cascadeRatio3;
 
 		public Vector3 CascadeRatios =>
-			new Vector3(cascadeRatio1, cascadeRatio2, cascadeRatio3);
+			new (cascadeRatio1, cascadeRatio2, cascadeRatio3);
 
 		[Range(0.001f, 1f)]
 		public float cascadeFade;
 
-		public enum CascadeBlendMode {
-			Hard, Soft, Dither
-		}
+		public enum CascadeBlendMode 
+		{ Hard, Soft, Dither }
 
 		public CascadeBlendMode cascadeBlend;
 	}
 
-	public Directional directional = new Directional {
+	public Directional directional = new (){
 		atlasSize = MapSize._1024,
 		filter = FilterMode.PCF2x2,
 		cascadeCount = 4,
@@ -54,12 +53,14 @@ public class ShadowSettings {
 		cascadeFade = 0.1f,
 		cascadeBlend = Directional.CascadeBlendMode.Hard
 	};
+	
 	[System.Serializable]
 	public struct Other {
 		public MapSize atlasSize;
 		public FilterMode filter;
 	}
-	public Other other = new Other {
+	
+	public Other other = new (){
 		atlasSize = MapSize._1024,
 		filter = FilterMode.PCF2x2
 	};

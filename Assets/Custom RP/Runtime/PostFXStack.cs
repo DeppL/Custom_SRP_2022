@@ -91,7 +91,7 @@ public partial class PostFXStack
         this.fxaa = fxaa;
         ApplySceneViewState();
     }
-    public void Render(RenderGraphContext context, int sourceId)
+    public void Render(RenderGraphContext context, TextureHandle sourceId)
     {
         buffer = context.cmd;
         if (DoBloom(sourceId))
@@ -107,7 +107,7 @@ public partial class PostFXStack
         buffer.Clear();
     }
 
-    bool DoBloom(int sourceId)
+    bool DoBloom(RenderTargetIdentifier sourceId)
     {
         PostFXSettings.BloomSettings bloom = settings.Bloom;
         int width, height;
@@ -285,7 +285,7 @@ public partial class PostFXStack
         
     }
 
-    void DoFinal(int sourceId)
+    void DoFinal(RenderTargetIdentifier sourceId)
     {
         ConfigureColorAdjustments();
         ConfigureWhiteBalance();

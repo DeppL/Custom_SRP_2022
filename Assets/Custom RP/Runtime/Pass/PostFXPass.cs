@@ -1,19 +1,24 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+
+using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
 public class PostFXPass
 {
-    PostFXStack postFXStack;
+    private static readonly ProfilingSampler sampler = new("Post FX");
+    private PostFXStack postFXStack;
+    private TextureHandle colorAttachment;
 
-    void Render(RenderGraphContext context) => postFXStack.Render(context, CameraRenderer.colorAttachmentId);
+    void Render(RenderGraphContext context) => postFXStack.Render(context, colorAttachment);
 
-    public static void Record(RenderGraph renderGraph, PostFXStack postFXStack)
+    public static void Record(
+        RenderGraph renderGraph,
+        PostFXStack postFXStack,
+        in CameraRendererTextures textures)
     {
         using RenderGraphBuilder builder =
-            renderGraph.AddRenderPass("Post FX", out PostFXPass pass);
+            renderGraph.AddRenderPass(sampler.name, out PostFXPass pass, sampler);
         pass.postFXStack = postFXStack;
+        pass.colorAttachment = builder.ReadTexture(textures.colorAttachment);
         builder.SetRenderFunc<PostFXPass>((pass, context) => pass.Render(context));
     }
 }

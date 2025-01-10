@@ -3,14 +3,14 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
-public partial class CustomRenderPipeline : RenderPipeline {
-
-	CameraRenderer renderer;
-	private readonly bool useLightsPerObject;
-	CameraBufferSettings cameraBufferSettings;
-	ShadowSettings shadowSettings;
-	PostFXSettings postFXSettings;
-	int colorLUTResolution;
+public partial class CustomRenderPipeline : RenderPipeline 
+{
+	readonly CameraRenderer renderer;
+	readonly bool useLightsPerObject;
+	readonly CameraBufferSettings cameraBufferSettings;
+	readonly ShadowSettings shadowSettings;
+	readonly PostFXSettings postFXSettings;
+	readonly int colorLUTResolution;
 
 	private readonly RenderGraph renderGraph = new("Custom SRP Render Graph");
 
@@ -18,7 +18,8 @@ public partial class CustomRenderPipeline : RenderPipeline {
 		CameraBufferSettings cameraBufferSettings,
 		bool useSRPBatcher,
 		bool useLightsPerObject, ShadowSettings shadowSettings, 
-		PostFXSettings postFXSettings, int colorLUTResolution, Shader cameraRendererShader
+		PostFXSettings postFXSettings, int colorLUTResolution,
+		Shader cameraRendererShader
 	) {
 		this.cameraBufferSettings = cameraBufferSettings;
 		this.postFXSettings = postFXSettings;
@@ -28,7 +29,7 @@ public partial class CustomRenderPipeline : RenderPipeline {
 		GraphicsSettings.useScriptableRenderPipelineBatching = useSRPBatcher;
 		GraphicsSettings.lightsUseLinearIntensity = true;
 		InitializeForEditor();
-		renderer = new CameraRenderer(cameraRendererShader);
+		renderer = new (cameraRendererShader);
 	}
 
 	protected override void Render ( ScriptableRenderContext context, Camera[] cameras ) {}

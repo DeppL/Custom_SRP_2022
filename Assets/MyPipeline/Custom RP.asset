@@ -12,8 +12,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c09c9ba443ab8425ca7560934947ff53, type: 3}
   m_Name: Custom RP
   m_EditorClassIdentifier: 
-  useDynamicBatching: 1
-  useGPUInstancing: 1
   useSRPBatcher: 1
   useLightsPerObject: 0
   shadows:
@@ -36,13 +34,15 @@ MonoBehaviour:
   colorLUTResolution: 16
   cameraRendererShader: {fileID: 4800000, guid: 4607a690cd1244d2ab028c3357db2b2a,
     type: 3}
+  useDynamicBatching: 1
+  useGPUInstancing: 1
   cameraBuffer:
     allowHDR: 1
     copyColor: 1
     copyColorReflection: 0
     copyDepth: 1
     copyDepthReflections: 0
-    renderScale: 0.936
+    renderScale: 1
     bicubicRescaling: 2
     fxaa:
       enabled: 0

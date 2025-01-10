@@ -1,32 +1,29 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
 public class FinalPass
 {
-    private CameraRenderer renderer;
-    private CameraSettings.FinalBlendMode finalBlendMode;
+    private static readonly ProfilingSampler sampler = new("Final");
+    private CameraRendererCopier copier;
+    private TextureHandle colorAttachMent;
 
     void Render(RenderGraphContext context)
     {
-        renderer.DrawFinal(finalBlendMode);
-        renderer.ExecuteBuffer();
+        CommandBuffer buffer = context.cmd;
+        copier.CopyToCameraTarget(buffer, colorAttachMent);
+        context.renderContext.ExecuteCommandBuffer(buffer);
+        buffer.Clear();
     }
 
     public static void Record(
         RenderGraph renderGraph,
-        CameraRenderer renderer,
-        CameraSettings.FinalBlendMode finalBlendMode)
+        CameraRendererCopier copier,
+        in CameraRendererTextures textures)
     {
         using RenderGraphBuilder builder =
-            renderGraph.AddRenderPass("Final", out FinalPass pass);
-        pass.renderer = renderer;
-        pass.finalBlendMode = finalBlendMode;
-        builder.SetRenderFunc<FinalPass>((pass, context) =>
-        {
-            pass.Render(context);
-        });
+            renderGraph.AddRenderPass(sampler.name, out FinalPass pass, sampler);
+        pass.copier = copier;
+        pass.colorAttachMent = builder.ReadTexture(textures.colorAttachment);
+        builder.SetRenderFunc<FinalPass>((pass, context) => pass.Render(context));
     }
-
 }

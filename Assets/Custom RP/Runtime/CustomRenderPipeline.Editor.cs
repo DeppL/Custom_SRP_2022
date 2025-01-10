@@ -13,10 +13,9 @@ partial class CustomRenderPipeline
         Lightmapping.SetDelegate(lightsDelegate);
     }
     partial void DisposeForEditor() {
-        // base.Dispose(disposing);
         Lightmapping.ResetDelegate();
     }
-    static Lightmapping.RequestLightsDelegate lightsDelegate =
+    static readonly Lightmapping.RequestLightsDelegate lightsDelegate =
         (Light[] lights, NativeArray<LightDataGI> output) => {
             var lightData = new LightDataGI();
             for (int i = 0; i < lights.Length; i++)

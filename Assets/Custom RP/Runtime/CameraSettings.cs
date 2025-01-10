@@ -6,11 +6,14 @@ using UnityEngine.Rendering;
 public class CameraSettings
 {
     public bool copyColor = true, copyDepth = true;
+    
     [RenderingLayerMaskField]
     public int renderingLayerMask = -1;
     public bool maskLights = false;
     public enum RenderScaleMode { Inherit, Multiply, Override }
+    
     public RenderScaleMode renderScaleMode = RenderScaleMode.Inherit;
+    
     [Range(CameraRenderer.renderScaleMin, CameraRenderer.renderScaleMax)]
     public float renderScale = 1f;
     
@@ -24,7 +27,7 @@ public class CameraSettings
         public BlendMode source, destination;
     }
 
-    public FinalBlendMode finalBlendMode = new FinalBlendMode {
+    public FinalBlendMode finalBlendMode = new (){
         source = BlendMode.One,
         destination = BlendMode.Zero 
     };

@@ -1,10 +1,7 @@
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering.RenderGraphModule;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.RendererUtils;
+using UnityEngine.Experimental.Rendering.RenderGraphModule;
 
 public class GeometryPass
 {
@@ -28,8 +25,13 @@ public class GeometryPass
     }
 
     public static void Record(
-        RenderGraph renderGraph, Camera camera, CullingResults cullingResults,
-        bool useLightsPerObject, int renderingLayerMask, bool opaque)
+        RenderGraph renderGraph,
+        Camera camera,
+        CullingResults cullingResults,
+        bool useLightsPerObject,
+        int renderingLayerMask,
+        bool opaque,
+        in CameraRendererTextures textures)
     {
         ProfilingSampler sampler = opaque ? samplerOpaque : samplerTransparent;
         using RenderGraphBuilder builder = renderGraph.AddRenderPass(
@@ -56,6 +58,19 @@ public class GeometryPass
                         RenderQueueRange.opaque : RenderQueueRange.transparent,
                     renderingLayerMask = (uint)renderingLayerMask
                 }));
+        builder.ReadWriteTexture(textures.colorAttachment);
+        builder.ReadWriteTexture(textures.depthAttachment);
+        if (!opaque)
+        {
+            if (textures.colorCopy.IsValid())
+            {
+                builder.ReadTexture(textures.colorCopy);
+            }
+            if (textures.depthCopy.IsValid())
+            {
+                builder.ReadTexture(textures.depthCopy);
+            }
+        }
         builder.SetRenderFunc<GeometryPass>((pass, context) => pass.Render(context));
     }
 }

@@ -17,8 +17,10 @@ public class PostFXSettings : ScriptableObject
         get {
             if (material == null && shader != null)
             {
-                material = new Material(shader);
-                material.hideFlags = HideFlags.HideAndDontSave;
+                material = new(shader)
+                {
+                    hideFlags = HideFlags.HideAndDontSave
+                };
             }
             return material;
         }
@@ -43,10 +45,11 @@ public class PostFXSettings : ScriptableObject
         public Mode mode;
         [Range(0.05f, 0.95f)]
         public float scatter;
-        public enum Mode { Additive, Scattering }
+        public enum Mode
+        { Additive, Scattering }
     }
     [SerializeField]
-    BloomSettings bloom = new BloomSettings {
+    BloomSettings bloom = new (){
         scatter = 0.7f
     };
     public BloomSettings Bloom => bloom;
@@ -66,7 +69,7 @@ public class PostFXSettings : ScriptableObject
     }
 
     [SerializeField]
-    ColorAdjustmentsSetting colorAdjusetments = new ColorAdjustmentsSetting {
+    ColorAdjustmentsSetting colorAdjusetments = new (){
         colorFilter = Color.white
     };
     public ColorAdjustmentsSetting ColorAdjustments => colorAdjusetments;
@@ -90,7 +93,7 @@ public class PostFXSettings : ScriptableObject
         public float balance;
     }
     [SerializeField]
-    SplitToningSettings splitToning = new SplitToningSettings {
+    SplitToningSettings splitToning = new (){
         shadowm = Color.gray,
         highlights = Color.gray
     };
@@ -102,7 +105,7 @@ public class PostFXSettings : ScriptableObject
         public Vector3 red, green, blue;
     }
     [SerializeField]
-    ChannelMixerSettings channelMixer = new ChannelMixerSettings {
+    ChannelMixerSettings channelMixer = new (){
         red = Vector3.right,
         green = Vector3.up,
         blue = Vector3.forward
@@ -119,7 +122,7 @@ public class PostFXSettings : ScriptableObject
     }
     [SerializeField]
     ShadowsMidtonesHighlightsSettings 
-        shadowsMidtonesHighlights = new ShadowsMidtonesHighlightsSettings {
+        shadowsMidtonesHighlights = new (){
             shadows = Color.white,
             midtones = Color.white,
             highlights = Color.white,
@@ -133,7 +136,9 @@ public class PostFXSettings : ScriptableObject
     [Serializable]
     public struct ToneMappingSettings
     {
-        public enum Mode { None, ACES, Neutral, Reinhard }
+        public enum Mode
+        { None, ACES, Neutral, Reinhard }
+        
         public Mode mode;
     }
     [SerializeField]
