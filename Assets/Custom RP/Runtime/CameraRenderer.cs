@@ -6,7 +6,6 @@ public class CameraRenderer {
 
 	public const float renderScaleMin = 0.1f, renderScaleMax = 2f;
 
-	Lighting lighting = new Lighting ();
 	PostFXStack postFXStack = new PostFXStack();
 	static CameraSettings defaultCameraSettings = new CameraSettings();
 
@@ -109,8 +108,8 @@ public class CameraRenderer {
 		using (renderGraph.RecordAndExecute(renderGraphParameters))
 		{
 			using var _ = new RenderGraphProfilingScope(renderGraph, cameraSampler);
-			LightingPass.Record(
-				renderGraph, lighting,
+			ShadowTextures shadowTextures = LightingPass.Record(
+				renderGraph, 
 				cullingResults, shadowSettings, useLightsPerObject,
 				cameraSettings.maskLights ? cameraSettings.renderingLayerMask : -1);
 			
@@ -121,7 +120,7 @@ public class CameraRenderer {
 			
 			GeometryPass.Record(
 				renderGraph, camera, cullingResults,
-				useLightsPerObject, cameraSettings.renderingLayerMask, true, textures);
+				useLightsPerObject, cameraSettings.renderingLayerMask, true, textures, shadowTextures);
 			
 			SkyboxPass.Record(renderGraph, camera, textures);
 			
@@ -132,7 +131,7 @@ public class CameraRenderer {
 			
 			GeometryPass.Record(
 				renderGraph, camera, cullingResults,
-				useLightsPerObject, cameraSettings.renderingLayerMask, false, textures);
+				useLightsPerObject, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
 			
 			UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
 			if (postFXStack.IsActive)
@@ -145,7 +144,6 @@ public class CameraRenderer {
 			}
 			GizmosPass.Record(renderGraph, useIntermediateBuffer, copier, textures);
 		}
-		lighting.Cleanup();
 		context.ExecuteCommandBuffer(renderGraphParameters.commandBuffer);
 		context.Submit();
 		CommandBufferPool.Release(renderGraphParameters.commandBuffer);
