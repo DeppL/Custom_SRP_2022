@@ -6,8 +6,8 @@ public class CameraRenderer {
 
 	public const float renderScaleMin = 0.1f, renderScaleMax = 2f;
 
-	PostFXStack postFXStack = new PostFXStack();
-	static CameraSettings defaultCameraSettings = new CameraSettings();
+	static readonly CameraSettings defaultCameraSettings = new ();
+	PostFXStack postFXStack = new ();
 
 	Material material;
 
@@ -57,6 +57,9 @@ public class CameraRenderer {
 		{
 			postFXSettings = cameraSettings.postFXSettings;
 		}
+
+		bool hasActivePostFX =
+			postFXSettings != null && PostFXSettings.AreApplicableTo(camera);
 		float renderScale = cameraSettings.GetRenderScale(bufferSettings.renderScale);
 		bool useScaledRendering = renderScale < 0.99f || renderScale > 1.01f;
 #if UNITY_EDITOR
@@ -74,7 +77,7 @@ public class CameraRenderer {
 			Mathf.Min(shadowSettings.maxDistance, camera.farClipPlane);
 		CullingResults cullingResults = context.Cull(ref scriptableCullingParameters);
 		
-		bool useHDR = bufferSettings.allowHDR && camera.allowHDR;
+		bufferSettings.allowHDR &= camera.allowHDR;
 		Vector2Int bufferSize = default;
 		if (useScaledRendering)
 		{
@@ -89,14 +92,9 @@ public class CameraRenderer {
 		}
 
 		bufferSettings.fxaa.enabled &= cameraSettings.allowFXAA;
-		postFXStack.Setup(
-			camera, bufferSize, postFXSettings, cameraSettings.keepAlpha, useHDR,
-			colorLUTResolution,
-			cameraSettings.finalBlendMode, bufferSettings.bicubicRescaling,
-			bufferSettings.fxaa);
-
+		
 		bool useIntermediateBuffer = useScaledRendering ||
-		                        useColorTexture || useDepthTexture || postFXStack.IsActive;
+		                        useColorTexture || useDepthTexture || hasActivePostFX;
 		var renderGraphParameters = new RenderGraphParameters()
 		{
 			commandBuffer = CommandBufferPool.Get(),
@@ -116,7 +114,7 @@ public class CameraRenderer {
 			CameraRendererTextures textures = SetupPass.Record(
 				renderGraph, useIntermediateBuffer, 
 				useColorTexture, useDepthTexture,
-				useHDR, bufferSize, camera);
+				bufferSettings.allowHDR, bufferSize, camera);
 			
 			GeometryPass.Record(
 				renderGraph, camera, cullingResults,
@@ -134,9 +132,15 @@ public class CameraRenderer {
 				useLightsPerObject, cameraSettings.renderingLayerMask, false, textures, shadowTextures);
 			
 			UnsupportedShadersPass.Record(renderGraph, camera, cullingResults);
-			if (postFXStack.IsActive)
+			if (hasActivePostFX)
 			{
-				PostFXPass.Record(renderGraph, postFXStack, textures);
+				postFXStack.BufferSettings = bufferSettings;
+				postFXStack.BufferSize = bufferSize;
+				postFXStack.Camera = camera;
+				postFXStack.FinalBlendMode = cameraSettings.finalBlendMode;
+				postFXStack.Settings = postFXSettings;
+				PostFXPass.Record(renderGraph, postFXStack, colorLUTResolution,
+					cameraSettings.keepAlpha, textures);
 			}
 			else if (useIntermediateBuffer)
 			{

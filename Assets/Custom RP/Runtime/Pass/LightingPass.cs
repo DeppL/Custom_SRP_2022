@@ -187,8 +187,8 @@ public class LightingPass
             renderGraph.AddRenderPass(sampler.name, out LightingPass pass, sampler);
         pass.Setup(cullingResults, shadowSettings,
             useLightsPerObject, renderingLayerMask);
-        builder.SetRenderFunc<LightingPass>((pass, context) 
-	        => pass.Render(context));
+        builder.SetRenderFunc<LightingPass>(
+	        static (pass, context) => pass.Render(context));
         builder.AllowPassCulling(false);
         return pass.shadows.GetRenderTextures(renderGraph, builder);
     }

@@ -69,7 +69,7 @@ public class CopyAttachmentsPass
             }
             builder.AllowPassCulling(true);
             builder.SetRenderFunc<CopyAttachmentsPass>(
-                (pass, context) => pass.Render(context));
+                static (pass, context) => pass.Render(context));
         }
     }
 }
