@@ -32,7 +32,7 @@ public class GeometryPass
         int renderingLayerMask,
         bool opaque,
         in CameraRendererTextures textures,
-        in ShadowTextures shadowTextures)
+        in LightResources lightData)
     {
         ProfilingSampler sampler = opaque ? samplerOpaque : samplerTransparent;
         using RenderGraphBuilder builder = renderGraph.AddRenderPass(
@@ -73,8 +73,17 @@ public class GeometryPass
             }
         }
 
-        builder.ReadTexture(shadowTextures.directinalAtlas);
-        builder.ReadTexture(shadowTextures.otherAtlas);
+        builder.ReadComputeBuffer(lightData.directionalLightDataBuffer);
+        builder.ReadComputeBuffer(lightData.otherLightDataBuffer);
+        builder.ReadTexture(lightData.shadowResources.directinalAtlas);
+        builder.ReadTexture(lightData.shadowResources.otherAtlas);
+        builder.ReadComputeBuffer(
+            lightData.shadowResources.directionalShadowCascadesBuffer);
+        builder.ReadComputeBuffer(
+            lightData.shadowResources.directionalShadowMatricesBuffer);
+        builder.ReadComputeBuffer(
+            lightData.shadowResources.otherShadowDataBuffer);
+        
         builder.SetRenderFunc<GeometryPass>(
             static (pass, context) => pass.Render(context));
     }

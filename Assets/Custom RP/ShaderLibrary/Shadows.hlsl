@@ -25,9 +25,9 @@
 	#define OTHER_FILTER_SETUP SampleShadow_ComputeSamples_Tent_7x7
 #endif
 
-#define MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT 4
-#define MAX_SHADOWED_OTHER_LIGHT_COUNT 16
-#define MAX_CASCADE_COUNT 4
+// #define MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT 4
+// #define MAX_SHADOWED_OTHER_LIGHT_COUNT 16
+// #define MAX_CASCADE_COUNT 4
 
 TEXTURE2D_SHADOW(_DirectionalShadowAtlas);
 TEXTURE2D_SHADOW(_OtherShadowAtlas);
@@ -36,16 +36,31 @@ SAMPLER_CMP(SHADOW_SAMPLER);
 
 CBUFFER_START(_CustomShadows)
 	int _CascadeCount;
-	float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
-	float4 _CascadeData[MAX_CASCADE_COUNT];
-	float4x4 _DirectionalShadowMatrices
-		[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
-	float4x4 _OtherShadowMatrices
-		[MAX_SHADOWED_OTHER_LIGHT_COUNT];
-	float4 _OtherShadowTiles[MAX_SHADOWED_OTHER_LIGHT_COUNT];
+	// float4 _CascadeCullingSpheres[MAX_CASCADE_COUNT];
+	// float4 _CascadeData[MAX_CASCADE_COUNT];
+	// float4x4 _DirectionalShadowMatrices
+	// 	[MAX_SHADOWED_DIRECTIONAL_LIGHT_COUNT * MAX_CASCADE_COUNT];
+	// float4x4 _OtherShadowMatrices
+		// [MAX_SHADOWED_OTHER_LIGHT_COUNT];
+	// float4 _OtherShadowTiles[MAX_SHADOWED_OTHER_LIGHT_COUNT];
 	float4 _ShadowAtlasSize;
 	float4 _ShadowDistanceFade;
 CBUFFER_END
+
+struct DirectionalShadowCascade
+{
+	float4 cullSphere, data;
+};
+StructuredBuffer<DirectionalShadowCascade> _DirectionalShadowCascades;
+StructuredBuffer<float4x4> _DirectionalShadowMatrices;
+
+struct OtherShadowBufferData
+{
+	float4 tileData;
+	float4x4 shadowMatrix;
+};
+
+StructuredBuffer<OtherShadowBufferData> _OtherShadowData;
 
 struct ShadowMask {
     bool always;
@@ -85,11 +100,12 @@ ShadowData GetShadowData (Surface surfaceWS) {
 	);
 	int i;
 	for (i = 0; i < _CascadeCount; i++) {
-		float4 sphere = _CascadeCullingSpheres[i];
-		float distanceSqr = DistanceSquared(surfaceWS.position, sphere.xyz);
-		if (distanceSqr < sphere.w) {
+		DirectionalShadowCascade cascade = _DirectionalShadowCascades[i];
+		float distanceSqr = DistanceSquared(
+			surfaceWS.position, cascade.cullSphere.xyz);
+		if (distanceSqr < cascade.cullSphere.w) {
 			float fade = FadedShadowStrength(
-				distanceSqr, _CascadeData[i].x, _ShadowDistanceFade.z
+				distanceSqr, cascade.data[i].x, _ShadowDistanceFade.z
 			);
 			if (i == _CascadeCount - 1) {
 				data.strength *= fade;
@@ -209,7 +225,7 @@ float MixBakedAndRealtimeShadows(ShadowData global, float shadow, int shadowMask
 float GetCascadedShadow(DirectionalShadowData directional, ShadowData global, Surface surfaceWS)
 {
 	float3 normalBias = surfaceWS.interpolatedNormal *
-		(directional.normalBias * _CascadeData[global.cascadeIndex].y);
+		(directional.normalBias * _DirectionalShadowCascades[global.cascadeIndex].data.y);
 	float3 positionSTS = mul(
 		_DirectionalShadowMatrices[directional.tileIndex],
 		float4(surfaceWS.position + normalBias, 1.0)
@@ -217,7 +233,7 @@ float GetCascadedShadow(DirectionalShadowData directional, ShadowData global, Su
 	float shadow = FilterDirectionalShadow(positionSTS);
 	if (global.cascadeBlend < 1.0) {
 		normalBias = surfaceWS.interpolatedNormal *
-			(directional.normalBias * _CascadeData[global.cascadeIndex + 1].y);
+			(directional.normalBias * _DirectionalShadowCascades[global.cascadeIndex + 1].data.y);
 		positionSTS = mul(
 			_DirectionalShadowMatrices[directional.tileIndex + 1],
 			float4(surfaceWS.position + normalBias, 1.0)
@@ -261,16 +277,18 @@ float GetOtherShadow(
 		tileIndex += faceOffset;
 		lightPlane = pointShadowPlanes[faceOffset];
 	}
-	float4 tileData = _OtherShadowTiles[tileIndex];
+	// float4 tileData = _OtherShadowTiles[tileIndex];
+	OtherShadowBufferData data = _OtherShadowData[tileIndex];
 	float3 surfaceToLight = other.lightPositionWS - surfaceWS.position;
 	float distanceToLightPlane = dot(surfaceToLight, lightPlane);
 	float3 normalBias = 
-		surfaceWS.interpolatedNormal * (distanceToLightPlane * tileData.w);
+		surfaceWS.interpolatedNormal * (distanceToLightPlane * data.tileData.w);
 	float4 positionSTS = mul(
-		_OtherShadowMatrices[tileIndex],
+		data.shadowMatrix[tileIndex],
 		float4(surfaceWS.position + normalBias, 1.0)
 	);
-	return FilterOtherShadow(positionSTS.xyz / positionSTS.w, tileData.xyz);
+	return FilterOtherShadow(
+		positionSTS.xyz / positionSTS.w, data.tileData.xyz);
 }
 
 float GetOtherShadowAttenuation (
